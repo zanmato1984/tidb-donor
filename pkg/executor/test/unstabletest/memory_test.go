@@ -124,21 +124,27 @@ func TestPBMemoryLeak(t *testing.T) {
 	// read data
 	runtime.GC()
 	allocatedBegin, inUseBegin := readMem()
-	records, err := tk.Session().Execute(context.Background(), "select * from t")
-	require.NoError(t, err)
-	record := records[0]
-	rowCnt := 0
-	chk := record.NewChunk(nil)
-	for {
-		require.NoError(t, record.Next(context.Background(), chk))
-		rowCnt += chk.NumRows()
-		if chk.NumRows() == 0 {
-			break
+	rowCnt := func() int {
+		records, err := tk.Session().Execute(context.Background(), "select * from t")
+		require.NoError(t, err)
+		require.Len(t, records, 1)
+
+		record := records[0]
+		defer func() { require.NoError(t, record.Close()) }()
+
+		rowCnt := 0
+		chk := record.NewChunk(nil)
+		for {
+			require.NoError(t, record.Next(context.Background(), chk))
+			rowCnt += chk.NumRows()
+			if chk.NumRows() == 0 {
+				return rowCnt
+			}
 		}
-	}
+	}()
 	require.Equal(t, int(numRows), rowCnt)
 
-	// check memory before close
+	// check memory after the result set has been drained and closed
 	runtime.GC()
 	allocatedAfter, inUseAfter := readMem()
 	require.GreaterOrEqual(t, allocatedAfter-allocatedBegin, totalSize)
