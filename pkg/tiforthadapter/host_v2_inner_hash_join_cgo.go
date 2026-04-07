@@ -50,8 +50,9 @@ type innerHashJoinOutputRow struct {
 }
 
 type innerHashJoinRunResult struct {
-	Rows         []innerHashJoinOutputRow
-	WarningCount uint32
+	Rows                []innerHashJoinOutputRow
+	WarningCount        uint32
+	ContinueOutputCalls uint32
 }
 
 var freeUnsafePointersFn = freeUnsafePointers
@@ -266,6 +267,7 @@ func drainContinueOutputRows(
 		if err := statusErrorV2("continue_output", status); err != nil {
 			return err
 		}
+		result.ContinueOutputCalls++
 		result.WarningCount += uint32(status.warning_count)
 		if err := appendJoinOutputRowsV2(continuedOutput, &result.Rows); err != nil {
 			return err

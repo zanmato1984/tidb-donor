@@ -32,11 +32,13 @@ func TestTiForthExecutionHostV2InnerHashJoinPayloadParitySerial(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, nativeWarnings, borrowResult.WarningCount)
 	require.Equal(t, nativeRows, borrowResult.Rows)
+	require.Greater(t, borrowResult.ContinueOutputCalls, uint32(0))
 
 	foreignResult, err := runTiForthExecutionHostV2InnerHashJoinPayload(1, true)
 	require.NoError(t, err)
 	require.Equal(t, nativeWarnings, foreignResult.WarningCount)
 	require.Equal(t, nativeRows, foreignResult.Rows)
+	require.Greater(t, foreignResult.ContinueOutputCalls, uint32(0))
 }
 
 func TestTiForthExecutionHostV2InnerHashJoinPayloadParityParallel(t *testing.T) {
@@ -64,6 +66,10 @@ func TestTiForthExecutionHostV2InnerHashJoinPayloadParityParallel(t *testing.T) 
 					result.WarningCount,
 					nativeWarnings,
 				)
+				return
+			}
+			if result.ContinueOutputCalls == 0 {
+				errs <- fmt.Errorf("worker %d expected split-output continuation calls, got none", worker)
 				return
 			}
 			if len(result.Rows) != len(nativeRows) {
