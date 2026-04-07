@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"sync"
 	"testing"
+	"unsafe"
 
 	"github.com/stretchr/testify/require"
 )
@@ -94,6 +95,23 @@ func TestTiForthExecutionHostV2InnerHashJoinPayloadParityParallel(t *testing.T) 
 	for err := range errs {
 		t.Fatal(err)
 	}
+}
+
+func TestTiForthExecutionHostV2InnerHashJoinPayloadForeignRetainableReleasesRetainedBuffers(t *testing.T) {
+	originalFreeUnsafePointers := freeUnsafePointersFn
+	t.Cleanup(func() {
+		freeUnsafePointersFn = originalFreeUnsafePointers
+	})
+
+	var releasedBufferCount int
+	freeUnsafePointersFn = func(buffers []unsafe.Pointer) {
+		releasedBufferCount += len(buffers)
+		originalFreeUnsafePointers(buffers)
+	}
+
+	_, err := runTiForthExecutionHostV2InnerHashJoinPayload(2, true)
+	require.NoError(t, err)
+	require.Greater(t, releasedBufferCount, 0)
 }
 
 func runTiDBNativeInnerHashJoinPayload() ([]innerHashJoinOutputRow, uint32) {

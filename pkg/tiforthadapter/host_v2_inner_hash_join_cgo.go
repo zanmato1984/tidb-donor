@@ -54,6 +54,8 @@ type innerHashJoinRunResult struct {
 	WarningCount uint32
 }
 
+var freeUnsafePointersFn = freeUnsafePointers
+
 func runTiForthExecutionHostV2InnerHashJoinPayload(partitions int, foreignRetainable bool) (innerHashJoinRunResult, error) {
 	if partitions <= 0 {
 		partitions = 1
@@ -92,7 +94,9 @@ func runTiForthExecutionHostV2InnerHashJoinPayload(partitions int, foreignRetain
 	result := innerHashJoinRunResult{Rows: make([]innerHashJoinOutputRow, 0, 8)}
 
 	retainedForeignBuffers := make([]unsafe.Pointer, 0, 16)
-	defer freeUnsafePointers(retainedForeignBuffers)
+	defer func() {
+		freeUnsafePointersFn(retainedForeignBuffers)
+	}()
 
 	ownershipMode := C.uint32_t(C.TIFORTH_EXECUTION_BATCH_OWNERSHIP_BORROW_WITHIN_CALL)
 	if foreignRetainable {
@@ -124,7 +128,7 @@ func runTiForthExecutionHostV2InnerHashJoinPayload(partitions int, foreignRetain
 			if foreignRetainable {
 				retainedForeignBuffers = append(retainedForeignBuffers, chunkBuffers...)
 			} else {
-				freeUnsafePointers(chunkBuffers)
+				freeUnsafePointersFn(chunkBuffers)
 			}
 
 			if err := statusErrorV2("drive_input_batch", &driveStatus); err != nil {
