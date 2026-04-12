@@ -166,14 +166,15 @@ func runDonorNativeCastBaseline(t *testing.T) ([]string, uint32) {
 	rows := tk.MustQuery(`
 		select cast(v as decimal(10,2))
 		from (
-			select 1 as id, '5.20' as v
-			union all select 2, '7.00'
+			select 1 as id, '1.239' as v
+			union all select 2, '5.20'
 			union all select 3, null
 		) as src
 		order by id
 	`).Rows()
 
 	warnings := uint32(len(tk.MustQuery("show warnings").Rows()))
+	require.Greater(t, warnings, uint32(0))
 	return formatQueryRows(rows), warnings
 }
 

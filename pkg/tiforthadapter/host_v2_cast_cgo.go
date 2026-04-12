@@ -61,8 +61,8 @@ func runTiForthExecutionHostV2TruncateAsWarningDecimalCast(foreignRetainable boo
 	}
 	defer C.tiforth_execution_host_v2_release_instance(instance)
 
-	offsets := []int32{0, 4, 8, 8}
-	data := []byte("5.207.00")
+	offsets := []int32{0, 5, 9, 9}
+	data := []byte("1.2395.20")
 	validity := []byte{1, 1, 0}
 	nullBitmap := executionHostV2BitmapFromValidity(validity)
 
