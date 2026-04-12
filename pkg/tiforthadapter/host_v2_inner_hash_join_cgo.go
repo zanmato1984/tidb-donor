@@ -183,6 +183,29 @@ func runTiForthExecutionHostV2InnerHashJoinPayload(partitions int, foreignRetain
 	return result, nil
 }
 
+// RunHostV2InnerHashJoinPayloadRows executes the TiForth host-v2 inner-hash-join
+// proving slice and returns canonicalized row output plus warning count.
+func RunHostV2InnerHashJoinPayloadRows(partitions int, foreignRetainable bool) ([]string, uint32, error) {
+	result, err := runTiForthExecutionHostV2InnerHashJoinPayload(partitions, foreignRetainable)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	rows := make([]string, 0, len(result.Rows))
+	for _, row := range result.Rows {
+		rows = append(
+			rows,
+			fmt.Sprintf(
+				"%s %s",
+				formatNullableInt64(row.BuildPayload),
+				formatNullableInt64(row.ProbePayload),
+			),
+		)
+	}
+
+	return rows, result.WarningCount, nil
+}
+
 func buildUTF8Int64JoinBatch(
 	rows []innerHashJoinInputRow,
 	ownershipMode C.uint32_t,
@@ -364,6 +387,13 @@ func compareNullableInt64(left, right nullableInt64) int {
 		return 1
 	}
 	return 0
+}
+
+func formatNullableInt64(value nullableInt64) string {
+	if !value.Valid {
+		return "null"
+	}
+	return fmt.Sprintf("%d", value.Value)
 }
 
 func freeUnsafePointers(buffers []unsafe.Pointer) {

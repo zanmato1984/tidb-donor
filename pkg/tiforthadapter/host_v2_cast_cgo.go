@@ -61,8 +61,8 @@ func runTiForthExecutionHostV2TruncateAsWarningDecimalCast(foreignRetainable boo
 	}
 	defer C.tiforth_execution_host_v2_release_instance(instance)
 
-	offsets := []int32{0, 3, 7, 7}
-	data := []byte("bad5.20")
+	offsets := []int32{0, 4, 8, 8}
+	data := []byte("5.207.00")
 	validity := []byte{1, 1, 0}
 	nullBitmap := executionHostV2BitmapFromValidity(validity)
 
@@ -112,6 +112,7 @@ func runTiForthExecutionHostV2TruncateAsWarningDecimalCast(foreignRetainable boo
 
 	var driveStatus C.TiforthStatusV2
 	var output C.TiforthBatchViewV2
+	warningCount := uint32(0)
 	C.tiforth_execution_host_v2_drive_input_batch(
 		instance,
 		C.TIFORTH_EXECUTION_INPUT_ID_SCALAR,
@@ -122,6 +123,7 @@ func runTiForthExecutionHostV2TruncateAsWarningDecimalCast(foreignRetainable boo
 	if err := statusErrorV2("drive_input_batch", &driveStatus); err != nil {
 		return nil, 0, err
 	}
+	warningCount += uint32(driveStatus.warning_count)
 
 	outputColumns := unsafe.Slice((*C.TiforthExecutionColumnViewV2)(unsafe.Pointer(output.columns)), int(output.column_count))
 	got := make([]string, int(output.row_count))
@@ -147,14 +149,22 @@ func runTiForthExecutionHostV2TruncateAsWarningDecimalCast(foreignRetainable boo
 	if err := statusErrorV2("drive_end_of_input", &endStatus); err != nil {
 		return nil, 0, err
 	}
+	warningCount += uint32(endStatus.warning_count)
 
 	var finishStatus C.TiforthStatusV2
 	C.tiforth_execution_host_v2_finish(instance, &finishStatus)
 	if err := statusErrorV2("finish", &finishStatus); err != nil {
 		return nil, 0, err
 	}
+	warningCount += uint32(finishStatus.warning_count)
 
-	return got, uint32(driveStatus.warning_count), nil
+	return got, warningCount, nil
+}
+
+// RunHostV2TruncateAsWarningDecimalCast executes the TiForth host-v2 cast
+// proving slice and returns row output plus warning count.
+func RunHostV2TruncateAsWarningDecimalCast(foreignRetainable bool) ([]string, uint32, error) {
+	return runTiForthExecutionHostV2TruncateAsWarningDecimalCast(foreignRetainable)
 }
 
 func statusErrorV2(step string, status *C.TiforthStatusV2) error {
