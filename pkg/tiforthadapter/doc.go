@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package tiforthadapter contains donor-side executable adapter probes that are
-// enabled only when the `tiforth_adapter` build tag is provided.
+// Package tiforthadapter contains donor-side reusable adapter helpers for
+// TiForth host-v2 proving slices. These helpers are enabled only when the
+// `tiforth_adapter` build tag is provided.
 package tiforthadapter

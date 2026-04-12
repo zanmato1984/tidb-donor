@@ -118,7 +118,7 @@ func runTiDBNativeTruncateAsWarningDecimalCast(t *testing.T) ([]string, uint32) 
 		SetDecimal(2).
 		BuildP()
 
-	inputs := []*string{toPtr("bad"), toPtr("5.20"), nil}
+	inputs := []*string{toPtr("1.239"), toPtr("5.20"), nil}
 	outputs := make([]string, len(inputs))
 	for i, input := range inputs {
 		if input == nil {
@@ -134,7 +134,9 @@ func runTiDBNativeTruncateAsWarningDecimalCast(t *testing.T) ([]string, uint32) 
 		outputs[i] = dec.String()
 	}
 
-	return outputs, uint32(warnings.WarningCount())
+	warningCount := uint32(warnings.WarningCount())
+	require.Greater(t, warningCount, uint32(0))
+	return outputs, warningCount
 }
 
 func toPtr(s string) *string {
