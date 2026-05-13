@@ -15,6 +15,7 @@
 package runaway
 
 import (
+	"errors"
 	"time"
 
 	"github.com/pingcap/failpoint"
@@ -124,7 +125,21 @@ func (f *batchFlusher[K, V]) flush() {
 	}
 
 	start := time.Now()
-	err := f.flushFn(f.buffer)
+	var err error
+	if f.name == "quarantine-record" {
+		failpoint.Inject("quarantineRecordFlushError", func(val failpoint.Value) {
+			shouldFail := true
+			if v, ok := val.(bool); ok {
+				shouldFail = v
+			}
+			if shouldFail {
+				err = errors.New("injected quarantine-record flush error")
+			}
+		})
+	}
+	if err == nil {
+		err = f.flushFn(f.buffer)
+	}
 	duration := time.Since(start)
 
 	f.batchSizeObserver.Observe(float64(batchSize))
@@ -136,5 +151,8 @@ func (f *batchFlusher[K, V]) flush() {
 	}
 
 	f.lastFlushTime = now
-	f.buffer = make(map[K]V, f.threshold)
+	// Keep buffer on error so records aren't silently dropped; next flush can retry.
+	if err == nil {
+		f.buffer = make(map[K]V, f.threshold)
+	}
 }
